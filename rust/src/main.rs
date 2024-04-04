@@ -9,6 +9,13 @@ use tokio::fs;
 #[tokio::main]
 async fn main() {
   let _ = dotenvy::dotenv().expect(".env not found");
+
+  let chat_ids = std::env::var("CHAT_IDS")
+    .expect("CHAT_IDS is not defined")
+    .split(',')
+    .map(|el| el.parse::<i64>().expect("chat id is a valid i64"))
+    .collect::<Vec<_>>();
+
   pretty_env_logger::init();
   audio_stuff();
 
@@ -17,6 +24,9 @@ async fn main() {
   let bot = Bot::from_env();
 
   teloxide::repl(bot, |bot: Bot, msg: Message| async move {
+    // if chat_ids.contains(&msg.chat.id.0) {
+      
+    // }
     if let Some(audio) = msg.voice() {
       debug!("Voice message detected");
 
@@ -45,7 +55,7 @@ fn audio_stuff() {
     .expect("failed to execute process");
 
   if !out.status.success() {
-    error!("{}", String::from_utf8(out.stderr).expect("valid utf8"));
+    error!("{}", String::from_utf8(out.stderr).expect("stderr was not valid utf8"));
   }
   println!("process finished with: {}", out.status);
 }

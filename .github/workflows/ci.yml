@@ -13,15 +13,22 @@ jobs:
   filter:
     runs-on: ubuntu-latest
     steps:
-    - uses: dorny/paths-filter@v2
-      id: changes
-      with:
-        filters: |
-          rust:
-            - 'rust/**'
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            rust:
+              - 'rust/**'
 
   build_test_run:
-    if: steps.changes.outputs.rust == 'true'
+    needs: filter
+    if: needs.filter.outputs.rust == 'true'
+    defaults:
+      run:
+        working-directory: rust
     name: Build and test on ${{ matrix.job.os }} (${{ matrix.job.target }})
     runs-on: ${{ matrix.job.os }}
     strategy:
@@ -56,7 +63,11 @@ jobs:
         run: ${SCCACHE_PATH} --show-stats
 
   lint:
-    if: steps.changes.outputs.rust == 'true'
+    needs: filter
+    if: needs.filter.outputs.rust == 'true'
+    defaults:
+      run:
+        working-directory: rust
     name: Lint
     runs-on: ubuntu-22.04
 
