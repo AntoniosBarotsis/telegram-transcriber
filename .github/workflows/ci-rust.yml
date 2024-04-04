@@ -1,9 +1,10 @@
-name: Build & Tests
+name: CI - Rust
 
 on:
   push:
     paths: rust/**
   pull_request:
+  workflow_dispatch: 
 
 env:
   CARGO_TERM_COLOR: always
@@ -44,10 +45,6 @@ jobs:
       # - name: Test
       #   run: cargo test --verbose
 
-      - name: Run sccache stat for check
-        shell: bash
-        run: ${SCCACHE_PATH} --show-stats
-
   lint:
     defaults:
       run:
@@ -59,6 +56,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+        
       - name: Install clippy and rustfmt
         run: |
           rustup component add clippy
@@ -69,7 +69,3 @@ jobs:
 
       - name: Run fmt
         run: cargo fmt --check
-
-      - name: Run sccache stat for check
-        shell: bash
-        run: ${SCCACHE_PATH} --show-stats
