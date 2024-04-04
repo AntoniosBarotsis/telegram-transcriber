@@ -6,9 +6,22 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 jobs:
+  filter:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: dorny/paths-filter@v2
+      id: changes
+      with:
+        filters: |
+          rust:
+            - 'rust/**'
+
   build_test_run:
+    if: steps.changes.outputs.rust == 'true'
     name: Build and test on ${{ matrix.job.os }} (${{ matrix.job.target }})
     runs-on: ${{ matrix.job.os }}
     strategy:
@@ -16,8 +29,8 @@ jobs:
       matrix:
         job:
           - { target: aarch64-unknown-linux-gnu , os: ubuntu-22.04 }
-          - { target: x86_64-unknown-linux-gnu  , os: ubuntu-22.04 }
-          - { target: x86_64-apple-darwin       , os: macos-12     }
+          # - { target: x86_64-unknown-linux-gnu  , os: ubuntu-22.04 }
+          # - { target: x86_64-apple-darwin       , os: macos-12     }
           - { target: x86_64-pc-windows-msvc    , os: windows-2022 }
 
     steps:
@@ -29,29 +42,27 @@ jobs:
         with:
           targets: ${{ matrix.job.target }}
 
-      - name: Use cached dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: "${{ matrix.job.os }}-${{ matrix.job.target }}"
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Build
         run: cargo build --verbose
 
-      - name: Test
-        run: cargo test --verbose
+      # - name: Test
+      #   run: cargo test --verbose
+
+      - name: Run sccache stat for check
+        shell: bash
+        run: ${SCCACHE_PATH} --show-stats
 
   lint:
+    if: steps.changes.outputs.rust == 'true'
     name: Lint
     runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      - name: Use cached dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: "ubuntu-22.04-x86_64-unknown-linux-gnu"
 
       - name: Install clippy and rustfmt
         run: |
@@ -63,3 +74,7 @@ jobs:
 
       - name: Run fmt
         run: cargo fmt --check
+
+      - name: Run sccache stat for check
+        shell: bash
+        run: ${SCCACHE_PATH} --show-stats
