@@ -2,6 +2,7 @@ name: Build & Tests
 
 on:
   push:
+    paths: rust/**
   pull_request:
 
 env:
@@ -10,22 +11,7 @@ env:
   RUSTC_WRAPPER: "sccache"
 
 jobs:
-  filter:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - uses: dorny/paths-filter@v2
-        id: changes
-        with:
-          filters: |
-            rust:
-              - 'rust/**'
-
   build_test_run:
-    needs: filter
-    if: needs.filter.outputs.rust == 'true'
     defaults:
       run:
         working-directory: rust
@@ -63,8 +49,6 @@ jobs:
         run: ${SCCACHE_PATH} --show-stats
 
   lint:
-    needs: filter
-    if: needs.filter.outputs.rust == 'true'
     defaults:
       run:
         working-directory: rust
