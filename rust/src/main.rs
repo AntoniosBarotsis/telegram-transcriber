@@ -5,6 +5,10 @@ use teloxide::{net::Download, requests::Requester, types::Message, Bot};
 use tokio::fs;
 
 static CHAT_IDS: OnceLock<Vec<i64>> = OnceLock::new();
+// TODO: Do something like this later down the line
+//       for sending tasks to a worker thread that handles talk.
+//       Task would need at least [msg.chat.id, msg.id, voice file name]
+// static SENDER: OnceLock<Sender<Task>> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
@@ -38,7 +42,12 @@ async fn main() {
     } else {
       debug!("No voice message detected, skipping");
     }
-    // bot.send_dice(msg.chat.id).await?;
+
+    // reply to original message
+    let mut tmp = bot.send_dice(msg.chat.id);
+    tmp.reply_to_message_id = Some(msg.id);
+    let _ = tmp.await?;
+
     Ok(())
   })
   .await;
