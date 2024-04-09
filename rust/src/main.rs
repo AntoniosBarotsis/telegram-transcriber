@@ -1,7 +1,14 @@
+mod voice_file;
+
 use std::{process::Command, sync::OnceLock};
 
 use log::{debug, error, info};
-use teloxide::{net::Download, requests::Requester, types::Message, Bot};
+use teloxide::{
+  net::Download,
+  requests::Requester,
+  types::{ChatId, Message, MessageId},
+  Bot,
+};
 use tokio::fs;
 
 static CHAT_IDS: OnceLock<Vec<i64>> = OnceLock::new();
@@ -9,6 +16,8 @@ static CHAT_IDS: OnceLock<Vec<i64>> = OnceLock::new();
 //       for sending tasks to a worker thread that handles talk.
 //       Task would need at least [msg.chat.id, msg.id, voice file name]
 // static SENDER: OnceLock<Sender<Task>> = OnceLock::new();
+
+use crate::voice_file::VoiceFile;
 
 #[tokio::main]
 async fn main() {
@@ -35,32 +44,36 @@ async fn main() {
       debug!("Voice message detected");
 
       let file = bot.get_file(&audio.file.id).await?;
-      // TODO: This needs to be random
-      let mut dst = fs::File::create("./test.opus").await?;
-      bot.download_file(&file.path, &mut dst).await?;
-      info!("Audio file saved");
 
-      audio_stuff();
+      let voice_file = VoiceFile::new(msg.chat.id.0, msg.id.0);
+      let filename = voice_file.generate_opus_filename();
+
+      let mut dst = fs::File::create(format!("./audio/{filename}")).await?;
+      bot.download_file(&file.path, &mut dst).await?;
+      debug!("Audio file saved");
+
+      audio_stuff(&filename, bot.clone()).await;
     } else {
       debug!("No voice message detected, skipping");
     }
 
     // reply to original message
-    let mut tmp = bot.send_dice(msg.chat.id);
-    tmp.reply_to_message_id = Some(msg.id);
-    let _ = tmp.await?;
+    // let mut tmp = bot.send_dice(msg.chat.id);
+    // tmp.reply_to_message_id = Some(msg.id);
+    // let _ = tmp.await?;
 
     Ok(())
   })
   .await;
 }
 
-// TODO: Add a timeout
-// TODO: Filename without extension as input (use in output, ulid?)
-// TODO: Segment mp3 if >30s?
-fn audio_stuff() {
+// TODO: Add a timeout?
+async fn audio_stuff(filename: &str, bot: Bot) {
+  let path_old = format!("./audio/{filename}");
+  let path_new = path_old.replace("opus", "wav");
+
   let out = Command::new("ffmpeg")
-    .args(["-i", "test.opus", "test.wav", "-y"])
+    .args(["-i", &path_old, "-ar", "16000", &path_new, "-y"])
     .output()
     .expect("failed to execute process");
 
@@ -70,7 +83,27 @@ fn audio_stuff() {
       String::from_utf8(out.stderr).expect("stderr was not valid utf8")
     );
   }
-  println!("process finished with: {}", out.status);
+
+  if let Err(e) = fs::remove_file(&path_old).await {
+    error!(
+      "Encountered error while trying to delete {}: {}",
+      path_old, e
+    );
+  } else {
+    debug!("Removed {}", path_old);
+
+    let _handle = tokio::spawn(async move {
+      std::thread::sleep(std::time::Duration::from_secs(5));
+
+      if let Ok(voice_file) = VoiceFile::try_from(path_new.as_str()) {
+        let mut tmp = bot.send_message(ChatId(voice_file.chat_id), "text");
+        tmp.reply_to_message_id = Some(MessageId(voice_file.msg_id));
+        let _ = tmp.await;
+      } else {
+        error!("Failed to parse {} as a voice file", path_new.as_str());
+      }
+    });
+  }
 }
 
 fn get_whitelisted_chat_ids_blocking() -> &'static Vec<i64> {
