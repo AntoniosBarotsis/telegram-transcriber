@@ -29,6 +29,8 @@ async fn main() {
       return Ok(());
     }
 
+    // TODO: Maybe it would be a good idea to  also look for messages that tag the bot and reply
+    //       to a voice message (as a way of requesting transcriptions) but thats for later.
     if let Some(audio) = msg.voice() {
       debug!("Voice message detected");
 
