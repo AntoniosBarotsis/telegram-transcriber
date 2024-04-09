@@ -89,6 +89,8 @@ async fn audio_stuff(filename: &str, bot: Bot) {
     debug!("Removed {}", path_old);
 
     // TODO: Move this to a separate function for readability
+    // TODO: MAYBE instead of doing this I should instead use a single persistent bg thread to
+    //       ensure I only make 1 request at a time (using channels) to not flood whisper
     let _handle = tokio::spawn(async move {
       std::thread::sleep(std::time::Duration::from_secs(5));
 
