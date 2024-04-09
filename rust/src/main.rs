@@ -12,10 +12,6 @@ use teloxide::{
 use tokio::fs;
 
 static CHAT_IDS: OnceLock<Vec<i64>> = OnceLock::new();
-// TODO: Do something like this later down the line
-//       for sending tasks to a worker thread that handles talk.
-//       Task would need at least [msg.chat.id, msg.id, voice file name]
-// static SENDER: OnceLock<Sender<Task>> = OnceLock::new();
 
 use crate::voice_file::VoiceFile;
 
@@ -92,10 +88,12 @@ async fn audio_stuff(filename: &str, bot: Bot) {
   } else {
     debug!("Removed {}", path_old);
 
+    // TODO: Move this to a separate function for readability
     let _handle = tokio::spawn(async move {
       std::thread::sleep(std::time::Duration::from_secs(5));
 
       if let Ok(voice_file) = VoiceFile::try_from(path_new.as_str()) {
+        // TODO: Send audio file to whisper
         let mut tmp = bot.send_message(ChatId(voice_file.chat_id), "text");
         tmp.reply_to_message_id = Some(MessageId(voice_file.msg_id));
         let _ = tmp.await;
