@@ -12,3 +12,4 @@ target/
 *.pdb
 .env
 test.*
+audio/
