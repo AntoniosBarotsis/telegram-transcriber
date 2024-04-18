@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::anyhow;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct VoiceFile {
   pub chat_id: i64,
   pub msg_id: i32,
@@ -14,6 +14,10 @@ impl VoiceFile {
   }
   pub fn generate_opus_filename(&self) -> String {
     format!("{}_{}.opus", self.chat_id, self.msg_id)
+  }
+
+  pub fn generate_wav_filename(&self) -> String {
+    format!("{}_{}.wav", self.chat_id, self.msg_id)
   }
 }
 

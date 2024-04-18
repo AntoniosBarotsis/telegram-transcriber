@@ -1,19 +1,18 @@
 mod voice_file;
+mod worker;
 
 use std::{process::Command, sync::OnceLock};
 
 use log::{debug, error, info};
-use teloxide::{
-  net::Download,
-  requests::Requester,
-  types::{ChatId, Message, MessageId},
-  Bot,
-};
+use teloxide::{net::Download, requests::Requester, types::Message, Bot};
 use tokio::fs;
 
 static CHAT_IDS: OnceLock<Vec<i64>> = OnceLock::new();
 
-use crate::voice_file::VoiceFile;
+use crate::{
+  voice_file::VoiceFile,
+  worker::{spawn_worker_thread, SENDER},
+};
 
 #[tokio::main]
 async fn main() {
@@ -24,9 +23,12 @@ async fn main() {
 
   pretty_env_logger::init();
 
-  info!("Starting throw dice bot...");
+  info!("Starting bot...");
 
   let bot = Bot::from_env();
+
+  let _worker_handle = spawn_worker_thread(bot.clone());
+  info!("Started worker thread");
 
   teloxide::repl(bot, |bot: Bot, msg: Message| async move {
     // If current chat id not contained in whitelisted chat ids list, return early
@@ -48,15 +50,10 @@ async fn main() {
       bot.download_file(&file.path, &mut dst).await?;
       debug!("Audio file saved");
 
-      audio_stuff(&filename, bot.clone()).await;
+      audio_stuff(&filename).await;
     } else {
       debug!("No voice message detected, skipping");
     }
-
-    // reply to original message
-    // let mut tmp = bot.send_dice(msg.chat.id);
-    // tmp.reply_to_message_id = Some(msg.id);
-    // let _ = tmp.await?;
 
     Ok(())
   })
@@ -64,7 +61,7 @@ async fn main() {
 }
 
 // TODO: Add a timeout?
-async fn audio_stuff(filename: &str, bot: Bot) {
+async fn audio_stuff(filename: &str) {
   let path_old = format!("./audio/{filename}");
   let path_new = path_old.replace("opus", "wav");
 
@@ -92,13 +89,10 @@ async fn audio_stuff(filename: &str, bot: Bot) {
     // TODO: MAYBE instead of doing this I should instead use a single persistent bg thread to
     //       ensure I only make 1 request at a time (using channels) to not flood whisper
     let _handle = tokio::spawn(async move {
-      std::thread::sleep(std::time::Duration::from_secs(5));
-
       if let Ok(voice_file) = VoiceFile::try_from(path_new.as_str()) {
-        // TODO: Send audio file to whisper
-        let mut tmp = bot.send_message(ChatId(voice_file.chat_id), "text");
-        tmp.reply_to_message_id = Some(MessageId(voice_file.msg_id));
-        let _ = tmp.await;
+        if let Err(e) = SENDER.get().expect("Sender should be set").send(voice_file) {
+          error!("Error sending {}", e.0.generate_wav_filename());
+        }
       } else {
         error!("Failed to parse {} as a voice file", path_new.as_str());
       }
@@ -109,7 +103,7 @@ async fn audio_stuff(filename: &str, bot: Bot) {
 fn get_whitelisted_chat_ids_blocking() -> &'static Vec<i64> {
   if CHAT_IDS.get().is_none() {
     let chat_ids = std::env::var("CHAT_IDS")
-      .expect("CHAT_IDS is not defined")
+      .expect("CHAT_IDS is not set")
       .split(',')
       .map(|el| el.parse::<i64>().expect("chat id is a valid i64"))
       .collect::<Vec<_>>();
