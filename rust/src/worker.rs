@@ -7,7 +7,7 @@ pub static SENDER: OnceLock<Sender> = OnceLock::new();
 pub type Sender = std::sync::mpsc::Sender<VoiceFile>;
 pub type Receiver = std::sync::mpsc::Receiver<VoiceFile>;
 
-use log::debug;
+use log::{debug, error};
 use reqwest::blocking::multipart;
 use teloxide::{
   requests::Requester,
@@ -41,15 +41,20 @@ pub fn spawn_worker_thread(bot: Bot) -> JoinHandle<()> {
 
         let form = multipart::Form::new().file("file", &path).unwrap();
 
-        // TODO: Let the user know of server errors instead of crashing
         debug!("Sending request");
         let res = client
           .post(whisper_url.clone())
           .multipart(form)
           .send()
-          .unwrap()
-          .text()
-          .unwrap();
+          .and_then(reqwest::blocking::Response::text);
+
+        let res = match res {
+          Ok(text) => text,
+          Err(e) => {
+            error!("Server error: {}", e);
+            "\"A Whisper server error has occured (check the logs)\"".to_owned()
+          }
+        };
 
         let transcribed = &res[1..res.len() - 1].to_owned();
 
