@@ -37,8 +37,6 @@ async fn main() {
       return Ok(());
     }
 
-    // TODO: Maybe it would be a good idea to  also look for messages that tag the bot and reply
-    //       to a voice message (as a way of requesting transcriptions) but thats for later.
     if let Some(voice) = msg.voice() {
       debug!("Voice message detected");
 
@@ -93,9 +91,6 @@ fn voice_stuff(voice_file: VoiceFile) {
     );
   }
 
-  // TODO: Move this to a separate function for readability
-  // TODO: MAYBE instead of doing this I should instead use a single persistent bg thread to
-  //       ensure I only make 1 request at a time (using channels) to not flood whisper
   let _handle = tokio::spawn(async move {
     if let Err(_e) = SENDER.get().expect("Sender should be set").send(voice_file) {
       error!("Error sending {}", path_wav.to_string_lossy());
