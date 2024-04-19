@@ -1,7 +1,7 @@
 mod voice_file;
 mod worker;
 
-use std::{process::Command, sync::OnceLock};
+use std::{path::PathBuf, process::Command, sync::OnceLock};
 
 use log::{debug, error, info};
 use teloxide::{net::Download, requests::Requester, types::Message, Bot};
@@ -45,13 +45,22 @@ async fn main() {
       let file = bot.get_file(&audio.file.id).await?;
 
       let voice_file = VoiceFile::new(msg.chat.id.0, msg.id.0);
-      let filename = voice_file.generate_opus_filename();
 
-      let mut dst = fs::File::create(format!("./audio/{filename}")).await?;
+      let path = voice_file.path_no_extension().with_extension("opus");
+
+      // The path should always have the audio folder for its parent.
+      let parent = path.parent().expect("Path had no parent");
+
+      if !parent.exists() {
+        debug!("Audio dir not found, creating");
+        fs::create_dir(parent).await?;
+      }
+
+      let mut dst = fs::File::create(&path).await?;
       bot.download_file(&file.path, &mut dst).await?;
       debug!("Audio file saved");
 
-      audio_stuff(&filename).await;
+      audio_stuff(&path).await;
     } else {
       debug!("No voice message detected, skipping");
     }
@@ -61,14 +70,18 @@ async fn main() {
   .await;
 }
 
-// TODO: Add a timeout?
-async fn audio_stuff(filename: &str) {
-  // FIXME: Create ./audio if doesn't exist
-  let path_old = format!("./audio/{filename}");
-  let path_new = path_old.replace("opus", "wav");
+async fn audio_stuff(path_opus: &PathBuf) {
+  let path_wav = path_opus.with_extension("wav");
 
   let out = Command::new("ffmpeg")
-    .args(["-i", &path_old, "-ar", "16000", &path_new, "-y"])
+    .args([
+      "-i",
+      &path_opus.to_string_lossy(),
+      "-ar",
+      "16000",
+      &path_wav.to_string_lossy(),
+      "-y",
+    ])
     .output()
     .expect("failed to execute process");
 
@@ -79,24 +92,28 @@ async fn audio_stuff(filename: &str) {
     );
   }
 
-  if let Err(e) = fs::remove_file(&path_old).await {
+  if let Err(e) = fs::remove_file(&path_opus).await {
     error!(
       "Encountered error while trying to delete {}: {}",
-      path_old, e
+      path_opus.to_string_lossy(),
+      e
     );
   } else {
-    debug!("Removed {}", path_old);
+    debug!("Removed {}", path_opus.to_string_lossy());
 
     // TODO: Move this to a separate function for readability
     // TODO: MAYBE instead of doing this I should instead use a single persistent bg thread to
     //       ensure I only make 1 request at a time (using channels) to not flood whisper
     let _handle = tokio::spawn(async move {
-      if let Ok(voice_file) = VoiceFile::try_from(path_new.as_str()) {
-        if let Err(e) = SENDER.get().expect("Sender should be set").send(voice_file) {
-          error!("Error sending {}", e.0.generate_wav_filename());
+      if let Ok(voice_file) = VoiceFile::try_from(&path_wav) {
+        if let Err(_e) = SENDER.get().expect("Sender should be set").send(voice_file) {
+          error!("Error sending {}", path_wav.to_string_lossy());
         }
       } else {
-        error!("Failed to parse {} as a voice file", path_new.as_str());
+        error!(
+          "Failed to parse {} as a voice file",
+          path_wav.to_string_lossy()
+        );
       }
     });
   }
