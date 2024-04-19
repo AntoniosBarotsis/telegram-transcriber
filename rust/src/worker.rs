@@ -7,14 +7,13 @@ pub static SENDER: OnceLock<Sender> = OnceLock::new();
 pub type Sender = std::sync::mpsc::Sender<VoiceFile>;
 pub type Receiver = std::sync::mpsc::Receiver<VoiceFile>;
 
-use log::{debug, error};
+use log::debug;
 use reqwest::blocking::multipart;
 use teloxide::{
   requests::Requester,
   types::{ChatId, MessageId},
   Bot,
 };
-use tokio::fs;
 
 fn setup() -> Receiver {
   let (tx, rx) = std::sync::mpsc::channel();
@@ -61,17 +60,6 @@ pub fn spawn_worker_thread(bot: Bot) -> JoinHandle<()> {
           let mut tmp = bot_clone.send_message(ChatId(voice_file.chat_id), transcribed);
           tmp.reply_to_message_id = Some(MessageId(voice_file.msg_id));
           let _ = tmp.await;
-
-          // TODO: Make sure this is always run (ie don't exit early for errors unless fatal)
-          if let Err(e) = fs::remove_file(&path).await {
-            error!(
-              "Encountered error while trying to delete {}: {}",
-              path.to_string_lossy(),
-              e
-            );
-          } else {
-            debug!("Deleted {}", path.to_string_lossy());
-          }
         };
 
         tokio::runtime::Builder::new_multi_thread()

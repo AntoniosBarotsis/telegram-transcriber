@@ -1,10 +1,16 @@
-use std::path::{Path, PathBuf};
+use std::{
+  fs::remove_file,
+  path::{Path, PathBuf},
+};
 
 use anyhow::anyhow;
+use log::{debug, error};
 
-static AUDIO_DIR: &str = "./audio";
+static VOICE_DIR: &str = "./audio";
 
-#[derive(Debug, Clone, Copy)]
+/// Represents a voice file on disk. Both the `wav` and `opus` files will automatically be deleted
+/// when the `VoiceFile` instance is dropped.
+#[derive(Debug, Clone)]
 pub struct VoiceFile {
   pub chat_id: i64,
   pub msg_id: i32,
@@ -16,7 +22,7 @@ impl VoiceFile {
   }
 
   pub fn path_no_extension(&self) -> PathBuf {
-    Path::new(AUDIO_DIR).join(format!("{}_{}", self.chat_id, self.msg_id))
+    Path::new(VOICE_DIR).join(format!("{}_{}", self.chat_id, self.msg_id))
   }
 }
 
@@ -42,5 +48,21 @@ impl TryFrom<&PathBuf> for VoiceFile {
     let msg_id = msg_id.parse::<i32>()?;
 
     Ok(Self { chat_id, msg_id })
+  }
+}
+
+impl Drop for VoiceFile {
+  fn drop(&mut self) {
+    let path = self.path_no_extension();
+
+    let opus = path.with_extension("opus");
+    let wav = path.with_extension("wav");
+
+    let opus_res = remove_file(&opus).map(|()| debug!("Removed {}", opus.to_string_lossy()));
+    let wav_res = remove_file(&wav).map(|()| debug!("Removed {}", wav.to_string_lossy()));
+
+    if opus_res.is_err() && wav_res.is_err() {
+      error!("Failed to remove file {}", path.to_string_lossy());
+    }
   }
 }

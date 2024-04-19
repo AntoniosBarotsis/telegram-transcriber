@@ -1,7 +1,7 @@
 mod voice_file;
 mod worker;
 
-use std::{path::PathBuf, process::Command, sync::OnceLock};
+use std::{process::Command, sync::OnceLock};
 
 use log::{debug, error, info};
 use teloxide::{net::Download, requests::Requester, types::Message, Bot};
@@ -39,28 +39,28 @@ async fn main() {
 
     // TODO: Maybe it would be a good idea to  also look for messages that tag the bot and reply
     //       to a voice message (as a way of requesting transcriptions) but thats for later.
-    if let Some(audio) = msg.voice() {
+    if let Some(voice) = msg.voice() {
       debug!("Voice message detected");
 
-      let file = bot.get_file(&audio.file.id).await?;
+      let file = bot.get_file(&voice.file.id).await?;
 
       let voice_file = VoiceFile::new(msg.chat.id.0, msg.id.0);
 
       let path = voice_file.path_no_extension().with_extension("opus");
 
-      // The path should always have the audio folder for its parent.
+      // The path should always have the voice folder for its parent.
       let parent = path.parent().expect("Path had no parent");
 
       if !parent.exists() {
-        debug!("Audio dir not found, creating");
+        debug!("Voice dir not found, creating");
         fs::create_dir(parent).await?;
       }
 
       let mut dst = fs::File::create(&path).await?;
       bot.download_file(&file.path, &mut dst).await?;
-      debug!("Audio file saved");
+      debug!("Voice file saved");
 
-      audio_stuff(&path).await;
+      voice_stuff(voice_file);
     } else {
       debug!("No voice message detected, skipping");
     }
@@ -70,7 +70,8 @@ async fn main() {
   .await;
 }
 
-async fn audio_stuff(path_opus: &PathBuf) {
+fn voice_stuff(voice_file: VoiceFile) {
+  let path_opus = voice_file.path_no_extension().with_extension("opus");
   let path_wav = path_opus.with_extension("wav");
 
   let out = Command::new("ffmpeg")
@@ -92,31 +93,14 @@ async fn audio_stuff(path_opus: &PathBuf) {
     );
   }
 
-  if let Err(e) = fs::remove_file(&path_opus).await {
-    error!(
-      "Encountered error while trying to delete {}: {}",
-      path_opus.to_string_lossy(),
-      e
-    );
-  } else {
-    debug!("Removed {}", path_opus.to_string_lossy());
-
-    // TODO: Move this to a separate function for readability
-    // TODO: MAYBE instead of doing this I should instead use a single persistent bg thread to
-    //       ensure I only make 1 request at a time (using channels) to not flood whisper
-    let _handle = tokio::spawn(async move {
-      if let Ok(voice_file) = VoiceFile::try_from(&path_wav) {
-        if let Err(_e) = SENDER.get().expect("Sender should be set").send(voice_file) {
-          error!("Error sending {}", path_wav.to_string_lossy());
-        }
-      } else {
-        error!(
-          "Failed to parse {} as a voice file",
-          path_wav.to_string_lossy()
-        );
-      }
-    });
-  }
+  // TODO: Move this to a separate function for readability
+  // TODO: MAYBE instead of doing this I should instead use a single persistent bg thread to
+  //       ensure I only make 1 request at a time (using channels) to not flood whisper
+  let _handle = tokio::spawn(async move {
+    if let Err(_e) = SENDER.get().expect("Sender should be set").send(voice_file) {
+      error!("Error sending {}", path_wav.to_string_lossy());
+    }
+  });
 }
 
 fn get_whitelisted_chat_ids_blocking() -> &'static Vec<i64> {
