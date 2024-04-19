@@ -14,6 +14,7 @@ use crate::{
   worker::{spawn_worker_thread, SENDER},
 };
 
+// TODO: Have a way of obtaining the chat id (mention perms in docs as well)
 #[tokio::main]
 async fn main() {
   let _ = dotenvy::dotenv().expect(".env not found");
@@ -62,6 +63,7 @@ async fn main() {
 
 // TODO: Add a timeout?
 async fn audio_stuff(filename: &str) {
+  // FIXME: Create ./audio if doesn't exist
   let path_old = format!("./audio/{filename}");
   let path_new = path_old.replace("opus", "wav");
 
