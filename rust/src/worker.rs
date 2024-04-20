@@ -48,6 +48,7 @@ pub fn spawn_worker_thread(bot: Bot) -> JoinHandle<()> {
           .send()
           .and_then(reqwest::blocking::Response::text);
 
+        // TODO: Honestly this is ugly, make it a separate method that returns a result instead.
         let res = match res {
           Ok(text) => text,
           Err(e) => {
