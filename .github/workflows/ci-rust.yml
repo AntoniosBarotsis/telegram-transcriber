@@ -4,6 +4,7 @@ on:
   push:
     paths: rust/**
   pull_request:
+    paths: rust/**
   workflow_dispatch: 
 
 env:
