@@ -19,9 +19,6 @@ use crate::{
 async fn main() {
   let _ = dotenvy::dotenv().expect(".env not found");
 
-  // Run this once here to precompute the value.
-  let _ = get_whitelisted_chat_ids_blocking();
-
   pretty_env_logger::init();
 
   info!("Starting bot...");
@@ -33,7 +30,15 @@ async fn main() {
 
   teloxide::repl(bot, |bot: Bot, msg: Message| async move {
     // If current chat id not contained in whitelisted chat ids list, return early
-    if !get_whitelisted_chat_ids_blocking().contains(&msg.chat.id.0) {
+    let whitelisted_ids = CHAT_IDS.get_or_init(|| {
+      std::env::var("CHAT_IDS")
+        .expect("CHAT_IDS is not set")
+        .split(',')
+        .map(|el| el.parse::<i64>().expect("chat id is a valid i64"))
+        .collect::<Vec<_>>()
+    });
+
+    if !whitelisted_ids.contains(&msg.chat.id.0) {
       return Ok(());
     }
 
@@ -96,27 +101,4 @@ fn voice_stuff(voice_file: VoiceFile) {
       error!("Error sending {}", path_wav.to_string_lossy());
     }
   });
-}
-
-fn get_whitelisted_chat_ids_blocking() -> &'static Vec<i64> {
-  if CHAT_IDS.get().is_none() {
-    let chat_ids = std::env::var("CHAT_IDS")
-      .expect("CHAT_IDS is not set")
-      .split(',')
-      .map(|el| el.parse::<i64>().expect("chat id is a valid i64"))
-      .collect::<Vec<_>>();
-
-    let _ = CHAT_IDS.set(chat_ids);
-
-    // Safety: At this point we know that CHAT_IDS is set
-    #[allow(clippy::unwrap_used)]
-    CHAT_IDS.get().unwrap()
-  } else {
-    // loop until it is set
-    loop {
-      if let Some(chat_ids) = CHAT_IDS.get() {
-        return chat_ids;
-      }
-    }
-  }
 }
