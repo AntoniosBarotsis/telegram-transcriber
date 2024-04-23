@@ -51,6 +51,7 @@ impl TryFrom<&PathBuf> for VoiceFile {
   }
 }
 
+// Tbh this is a bad idea but I thought it was funny
 impl Drop for VoiceFile {
   fn drop(&mut self) {
     let path = self.path_no_extension();
