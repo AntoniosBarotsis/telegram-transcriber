@@ -1,3 +1,4 @@
+mod log_conf;
 mod voice_file;
 mod worker;
 
@@ -19,7 +20,7 @@ use crate::{
 async fn main() {
   let _ = dotenvy::dotenv().expect(".env not found");
 
-  pretty_env_logger::init();
+  log_conf::configure_logger();
 
   info!("Starting bot...");
 
