@@ -57,13 +57,21 @@ pub fn spawn_worker_thread(bot: Bot) -> JoinHandle<()> {
           }
         };
 
-        let transcribed = &res[1..res.len() - 1].to_owned();
+        // Remove quotation marks
+        let transcribed = &mut res[1..res.len() - 1].to_owned();
+
+        // Let the user know if the message could not be transcribed (usually when no voice is
+        // detected). Empty messages are not sent by telegram so it is not obvious if the bot
+        // is working correctly unless we respond.
+        if transcribed.is_empty() {
+          transcribed.push_str("Could not transcribe");
+        }
 
         let bot_clone = bot.clone();
         let future = async move {
           debug!("{:?}", res);
 
-          let mut tmp = bot_clone.send_message(ChatId(voice_file.chat_id), transcribed);
+          let mut tmp = bot_clone.send_message(ChatId(voice_file.chat_id), transcribed.to_owned());
           tmp.reply_to_message_id = Some(MessageId(voice_file.msg_id));
           let _ = tmp.await;
         };
