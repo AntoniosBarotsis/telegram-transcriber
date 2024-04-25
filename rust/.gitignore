@@ -12,3 +12,5 @@ target/
 *.pdb
 .env
 test.*
+audio/
+nohup.out
