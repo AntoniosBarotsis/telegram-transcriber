@@ -1,17 +1,9 @@
-from faster_whisper import WhisperModel
 import time
-import gc
 
 
-def transcribe(audio, device="cuda"):
+def transcribe(audio, model):
     print("Running Whisper...")
     start = time.time()  # in seconds
-    model = WhisperModel(
-        "large-v2",
-        device=device,
-        compute_type="float16" if device == "cuda" else "float32",
-    )
-    print("Model loaded!")
 
     # TODO: Add a failsafe to run on CPU if CUDA error
     segments, _ = model.transcribe(audio, vad_filter=True)
@@ -25,8 +17,5 @@ def transcribe(audio, device="cuda"):
     runtime = time.time() - start
     print("Transcription done! Time to transcribe (in s): " + str(runtime))
     print("Result: " + text)
-
-    del model
-    gc.collect()
 
     return text

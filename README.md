@@ -5,7 +5,40 @@ A simple Telegram bot that replies to voice messages with their transcription.
 The project is split into a [Whisper](https://github.com/openai/whisper) server (`./python`) and
 the telegram bot (`./rust`).
 
-<!-- ## The Whisper Server -->
+## The Whisper Server
+
+### Dependencies
+
+- Python 3.10
+- CUDA version 12
+- WSL (if on Windows)
+
+### Configuration
+
+1. Create a Python virtual environment:
+```
+python -m venv name_of_your_venv
+```
+2. Activate the virtual environment
+```
+source name_of_your_venv/bin/activate
+```
+2. Install the requirements:
+```
+pip install -r requirements.txt
+```
+
+### Running
+
+The API used to receive and respond to requests is FastAPI and the server can be run using Uvicorn:
+```
+uvicorn main:app --reload
+```
+
+By default, the port it will receive requests on is `8000`. You will also need to forward this port and set a static IP.
+
+An alternative would be to configure [ngrok](https://dashboard.ngrok.com/get-started/setup/windows).
+
 
 ## The Telegram Bot
 
