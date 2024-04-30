@@ -7,7 +7,6 @@ def transcribe(audio, model):
 
     # TODO: Add a failsafe to run on CPU if CUDA error
     segments, _ = model.transcribe(audio, vad_filter=True)
-    print("Get transcribed B-)")
 
     text = ""
 
