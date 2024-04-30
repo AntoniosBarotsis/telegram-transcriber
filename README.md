@@ -28,16 +28,26 @@ source name_of_your_venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Testing if Whisper can run
+
+You can run
+```
+python test_transcription.py
+```
+To test whether everything has been installed correctly. The output should be plain text.
+
 ### Running
 
 The API used to receive and respond to requests is FastAPI and the server can be run using Uvicorn:
 ```
-uvicorn main:app --reload
+uvicorn main:app
 ```
 
 By default, the port it will receive requests on is `8000`. You will also need to forward this port and set a static IP.
 
 An alternative would be to configure [ngrok](https://dashboard.ngrok.com/get-started/setup/windows).
+
+If you want to test changes to the code whilst running the bot, add `--reload` at the end of the command.
 
 
 ## The Telegram Bot
