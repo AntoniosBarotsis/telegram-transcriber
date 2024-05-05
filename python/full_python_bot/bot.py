@@ -63,6 +63,8 @@ if __name__ == '__main__':
     load_dotenv()
 
     transcript_handler = MessageHandler(
+        # Uncomment below for debugging
+        # filters.ALL,
         (filters.VOICE |
          filters.VIDEO_NOTE |
          filters.AUDIO |
