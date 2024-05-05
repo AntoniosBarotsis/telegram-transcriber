@@ -1,4 +1,4 @@
-from whisper import transcribe
+from full_python_bot.whisper import transcribe
 
 
-print(transcribe('files/sample1.flac'))
+print(transcribe('test/sample1.flac'))
