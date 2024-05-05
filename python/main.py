@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile
-from whisper import transcribe
+from full_python_bot.whisper import transcribe
 from faster_whisper import WhisperModel
 import gc
 import time
