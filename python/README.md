@@ -1,5 +1,5 @@
 # The fully Python Telegram Transcriber Bot
-To avoid having to set up a static IP/ngrok, I (greenw0lf) decided to implement every aspect of the bot in Python, from the part that interacts with the Telegram Bot API to the code that runs Whisper on the audio files (that already existed from the initial commits).
+To avoid having to set up a static IP/ngrok, I ([greenw0lf](https://github.com/greenw0lf)) decided to implement every aspect of the bot in Python, from the part that interacts with the Telegram Bot API to the code that runs Whisper on the audio files (that already existed from the initial commits).
 
 I have also expanded on the original implementation that only supported voice messages to include all sorts of sources that contain audio, including video messages, as well as audio and video files.
 
