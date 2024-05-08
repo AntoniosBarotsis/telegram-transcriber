@@ -2,7 +2,7 @@
 
 A simple Telegram bot that replies to voice messages with their transcription.
 
-The project is split into a [Whisper](https://github.com/openai/whisper) server (`./python`) and
+The project is split into a [Whisper](https://github.com/SYSTRAN/faster-whisper) server (`./python`) and
 the telegram bot (`./rust`).
 
 ## The Whisper Server
