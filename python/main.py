@@ -15,7 +15,7 @@ async def lifespan(app: FastAPI):
     print("Loading Whisper...")
     start = time.time()
     model["whisper"] = WhisperModel(
-        "large-v2",
+        model="large-v2",
         device='cuda',
         compute_type="float16",
     )
